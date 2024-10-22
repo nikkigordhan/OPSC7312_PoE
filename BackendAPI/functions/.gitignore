@@ -1,2 +1,11 @@
+# Ignore node_modules directory
 node_modules/
+
+# Ignore all files with a .local extension
 *.local
+
+# Ignore service key file
+Keys/serviceKey.json
+
+# Ignore environment variable file
+.env
