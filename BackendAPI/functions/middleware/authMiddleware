@@ -1,0 +1,46 @@
+const jwt = require('jsonwebtoken');
+const admin = require('../config/db.js'); 
+
+// Middleware to protect routes
+const protect = async (req, res, next) => {
+    let token;
+
+    // Check if token is provided
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        try {
+            // Get token from header
+            token = req.headers.authorization.split(' ')[1];
+
+            // Verify token
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("Decoded token ID:", decoded.id); // Log the decoded ID
+
+            // Determine user type and fetch user data
+            const userRef = admin.database().ref(`${decoded.role}s/${decoded.id}`); // Use decoded.role to construct the path
+
+            // Get user data from the reference
+            const userSnapshot = await userRef.once('value');
+
+            if (!userSnapshot.exists()) {
+                console.error("User not found for ID:", decoded.id); // Log if user is not found
+                return res.status(401).json({ message: 'Not authorized, user not found' });
+            }
+
+            // Attach user information to the request object (excluding password)
+            req.user = { id: decoded.id, ...userSnapshot.val() }; // Attach user data
+            delete req.user.password; // Ensure password is not included in the request object
+            
+            next();
+        } catch (error) {
+            console.error("Not authorized, token failed:", error);
+            res.status(401).json({ message: 'Not authorized, token failed' });
+        }
+    } else {
+        res.status(401).json({ message: 'Not authorized, no token' });
+    }
+};
+
+module.exports = {
+    protect,
+};
+
